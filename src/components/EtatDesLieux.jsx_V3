@@ -1,0 +1,175 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Star, Upload, ArrowLeft, ArrowRight } from 'lucide-react';
+import { 
+  maintenancePreventiveQuestions,
+  amenagementDatacenterQuestions,
+  surveyInformatiqueQuestions,
+  auditDatacenterQuestions,
+  maintenanceEnvironnementaleQuestions
+} from './surveyQuestions';
+
+function EtatDesLieux() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [currentSeries, setCurrentSeries] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [photos, setPhotos] = useState({});
+  const [comments, setComments] = useState({});
+  const [surveyType, setSurveyType] = useState(location.state?.surveyType || 'Maintenance Préventive');
+  const [subMenu, setSubMenu] = useState('');
+  const clientData = location.state;
+
+  const getQuestions = () => {
+    switch (surveyType) {
+      case 'Maintenance Préventive':
+        return maintenancePreventiveQuestions;
+      case 'Aménagement Datacenter':
+        return amenagementDatacenterQuestions;
+      case 'Informatique':
+        return surveyInformatiqueQuestions[subMenu] || [];
+      case 'Audit Datacenter':
+        return auditDatacenterQuestions;
+      case 'Maintenance Environnementale':
+        return maintenanceEnvironnementaleQuestions;
+      default:
+        return [];
+    }
+  };
+
+  const questions = getQuestions();
+
+  const handleAnswerChange = (questionId, value) => {
+    setAnswers(prev => ({ ...prev, [questionId]: value }));
+  };
+
+  const handleCommentChange = (questionId, value) => {
+    setComments(prev => ({ ...prev, [questionId]: value }));
+  };
+
+  const handlePhotoUpload = (questionId, file) => {
+    setPhotos(prev => ({ ...prev, [questionId]: file }));
+  };
+
+  const handleSubmit = () => {
+    console.log({ answers, comments, photos });
+    // Ici, vous pouvez ajouter la logique pour envoyer les données au serveur
+    navigate('/dashboard');
+  };
+
+  const questionsPerSeries = 10;
+  const currentQuestions = questions.slice(
+    currentSeries * questionsPerSeries,
+    (currentSeries + 1) * questionsPerSeries
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
+        <h1 className="text-3xl font-bold mb-6 text-[#0056b3]">Etat des Lieux - {surveyType}</h1>
+        
+        {surveyType === 'Informatique' && (
+          <select
+            className="mb-4 p-2 border border-gray-300 rounded-md"
+            value={subMenu}
+            onChange={(e) => setSubMenu(e.target.value)}
+          >
+            <option value="">Sélectionnez un sous-menu</option>
+            <option value="cablage">Câblage</option>
+            <option value="videosurveillance">Vidéosurveillance</option>
+            <option value="controleAcces">Contrôle d'accès</option>
+          </select>
+        )}
+
+        {currentQuestions.map((q, index) => (
+          <div key={q.id} className="mb-8 p-4 border border-gray-200 rounded-lg">
+            <h2 className="text-xl font-semibold mb-2">{q.subject}</h2>
+            <p className="text-sm text-gray-600 mb-2">{q.norm}</p>
+            <p className="mb-4">{q.question}</p>
+            <div className="flex items-center mb-4">
+              {[0, 1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  size={24}
+                  onClick={() => handleAnswerChange(q.id, star)}
+                  fill={answers[q.id] >= star ? getStarColor(star) : 'none'}
+                  stroke={getStarColor(star)}
+                  className="cursor-pointer"
+                />
+              ))}
+            </div>
+            <textarea
+              className="w-full p-2 border border-gray-300 rounded-md mb-4"
+              placeholder="Commentaire"
+              value={comments[q.id] || ''}
+              onChange={(e) => handleCommentChange(q.id, e.target.value)}
+            />
+            <div className="flex items-center">
+              <label className="flex items-center cursor-pointer bg-blue-500 text-white px-4 py-2 rounded-md">
+                <Upload size={20} className="mr-2" />
+                Ajouter une photo
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handlePhotoUpload(q.id, e.target.files[0])}
+                />
+              </label>
+              {photos[q.id] && <span className="ml-2">{photos[q.id].name}</span>}
+            </div>
+          </div>
+        ))}
+
+        <div className="flex justify-between mt-6">
+          {currentSeries > 0 && (
+            <button
+              onClick={() => setCurrentSeries(prev => prev - 1)}
+              className="flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
+            >
+              <ArrowLeft size={20} className="mr-2" /> Précédent
+            </button>
+          )}
+          {currentSeries === 0 && (
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
+            >
+              <ArrowLeft size={20} className="mr-2" /> Retour
+            </button>
+          )}
+          {currentSeries < 1 ? (
+            <button
+              onClick={() => setCurrentSeries(1)}
+              className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md"
+            >
+              Suivant <ArrowRight size={20} className="ml-2" />
+            </button>
+          ) : (
+            <div>
+              <button
+                onClick={handleSubmit}
+                className="flex items-center px-4 py-2 bg-green-500 text-white rounded-md mr-2"
+              >
+                Terminer
+              </button>
+              <button
+                onClick={() => navigate('/recommendations')}
+                className="flex items-center px-4 py-2 bg-yellow-500 text-white rounded-md"
+              >
+                Recommandations
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getStarColor(star) {
+  if (star <= 1) return '#ff0000';
+  if (star <= 3) return '#ffa500';
+  return '#008000';
+}
+
+export default EtatDesLieux;
